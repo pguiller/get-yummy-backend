@@ -1,0 +1,124 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model user {
+  id      Int         @id @default(autoincrement())
+  name    String
+  email   String      @unique
+  password String
+  status  user_status
+  isAdmin Boolean   @default(false)
+  recipes Recipe[]
+}
+
+enum user_status {
+  active
+  inactive
+}
+
+model Recipe {
+  id                Int         @id @default(autoincrement())
+  name              String
+  date              String
+  image             String
+  preparation_time_value Int
+  preparation_time_unit  String
+  baking_time_value      Int?
+  baking_time_unit       String?
+  thermostat        String?
+  resting_time_value     Int?
+  resting_time_unit      String?
+  number_of_persons Int
+  link              String?
+  ownerId           Int
+  owner             user        @relation(fields: [ownerId], references: [id])
+  ingredients       Ingredient[]
+  steps             Step[]
+  tags              Tag[]
+}
+
+model Ingredient {
+  id         Int           @id @default(autoincrement())
+  name       IngredientKind
+  unit       Unit?
+  value      Int
+  recipe     Recipe        @relation(fields: [recipeId], references: [id])
+  recipeId   Int
+}
+
+enum IngredientKind {
+  oeufs
+  sucre
+  farine
+  beurre
+  sucre_de_canne
+  eau
+  chocolat_noir
+  chocolat_au_lait
+  praliné
+  sucre_vanillé
+  noix
+  levure
+  sel
+  citron_vert
+  maizena
+  noix_de_pécan
+  poudre_de_noisette
+  sucre_glace
+  crème
+  myrtilles
+  oignon
+  sauce_soja
+  aubergine
+  carotte
+  sésame
+  mirin
+  huile_d_olive
+  vinaigre_balsamique
+  paprika
+  thym
+  miel
+}
+
+enum Unit {
+  g
+  kg
+  mL
+  cL
+  L
+  verre
+  sachet
+  pincée
+  cuill_soupe
+  cuill_cafe
+}
+
+model Step {
+  id          Int      @id @default(autoincrement())
+  description String
+  image       String?
+  recipe      Recipe   @relation(fields: [recipeId], references: [id])
+  recipeId    Int
+}
+
+model Tag {
+  id       Int    @id @default(autoincrement())
+  value    TagEnum
+  recipe   Recipe @relation(fields: [recipeId], references: [id])
+  recipeId Int
+}
+
+enum TagEnum {
+  New
+  Best
+  Dessert
+  Végétarien
+  Plat
+  Basique
+}
