@@ -1,6 +1,6 @@
 import express from 'express';
-import cors from 'cors';
 import cookieParser from 'cookie-parser';
+import cors from 'cors';
 import { corsOptions } from './config/corsOptions';
 import userRoutes from './routes/user.routes';
 import recipeRoutes from './routes/recipe.routes';
@@ -10,10 +10,8 @@ import authRoutes from './routes/auth.routes';
 const app = express();
 
 app.use(cors(corsOptions));
-app.options('*', cors(corsOptions));
-
-app.use(cookieParser());
 app.use(express.json());
+app.use(cookieParser());
 
 app.use('/users', userRoutes);
 app.use('/recipes', recipeRoutes);
