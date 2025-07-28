@@ -5,3 +5,6 @@ dist
 
 # Keep you data test in local
 prisma/dev.db
+
+# Keep the uploads directory out of version control
+uploads

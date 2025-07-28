@@ -122,3 +122,10 @@ enum TagEnum {
   Plat
   Basique
 }
+
+model Image {
+  id        Int      @id @default(autoincrement())
+  filename  String
+  path      String
+  uploadedAt DateTime @default(now())
+}

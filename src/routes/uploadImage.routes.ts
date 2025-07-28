@@ -1,8 +1,10 @@
-import express from 'express';
-import { uploadImage } from '../controllers/uploadImage.controller';
+import { Router } from 'express';
+import { uploadImage, listImages, deleteImage } from '../controllers/uploadImage.controller';
 
-const router = express.Router();
+const router = Router();
 
-router.post('/', uploadImage);
+router.post('/upload', uploadImage);
+router.get('/all', listImages);
+router.delete('/:id', deleteImage);
 
 export default router;
