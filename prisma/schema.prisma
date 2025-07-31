@@ -24,16 +24,13 @@ enum user_status {
 
 model Recipe {
   id                Int         @id @default(autoincrement())
-  name              String
+  name              String   @unique
   date              String
   image             String
-  preparation_time_value Int
-  preparation_time_unit  String
-  baking_time_value      Int?
-  baking_time_unit       String?
-  thermostat        String?
-  resting_time_value     Int?
-  resting_time_unit      String?
+  preparation_time  Int
+  baking_time       Int?
+  thermostat        Int?
+  resting_time      Int?
   number_of_persons Int
   link              String?
   ownerId           Int
@@ -47,7 +44,7 @@ model Ingredient {
   id         Int           @id @default(autoincrement())
   name       IngredientKind
   unit       Unit?
-  value      Int
+  value      Float
   recipe     Recipe        @relation(fields: [recipeId], references: [id])
   recipeId   Int
 }
@@ -61,34 +58,172 @@ enum IngredientKind {
   eau
   chocolat_noir
   chocolat_au_lait
-  praliné
-  sucre_vanillé
+  praline
+  sucre_vanille
   noix
   levure
   sel
+  citron_jaune
   citron_vert
   maizena
-  noix_de_pécan
+  noix_de_pecan
   poudre_de_noisette
   sucre_glace
-  crème
+  creme
   myrtilles
   oignon
   sauce_soja
   aubergine
   carotte
-  sésame
+  sesame
   mirin
   huile_d_olive
   vinaigre_balsamique
   paprika
   thym
   miel
+  lait
+  creme_liquide
+  lait_concentre
+  lait_coco
+  noix_de_coco
+  banane
+  fraises
+  framboises
+  citron
+  orange
+  pomme
+  poire
+  peche
+  mangue
+  ananas
+  raisin
+  figue
+  dattes
+  amandes
+  noisettes
+  pistaches
+  cannelle
+  muscade
+  gingembre
+  vanille
+  extrait_vanille
+  chocolat_blanc
+  cacao
+  yaourt
+  fromage_blanc
+  mascarpone
+  ricotta
+  beurre_de_cacahuete
+  compote
+  pain
+  brioche
+  pate_feuilletee
+  pate_brisee
+  pate_sablee
+  riz
+  semoule
+  quinoa
+  lentilles
+  pois_chiches
+  haricots_rouges
+  courgette
+  poivron
+  champignons
+  epinards
+  brocoli
+  chou_fleur
+  patate_douce
+  pomme_de_terre
+  tomates
+  tomates_sechees
+  ail
+  echalote
+  basilic
+  coriandre
+  persil
+  menthe
+  romarin
+  curry
+  curcuma
+  piment
+  bouillon_legumes
+  bouillon_volaille
+  sauce_tomate
+  sauce_teriyaki
+  vinaigre
+  moutarde
+  ketchup
+  mayonnaise
+  huile_tournesol
+  huile_sesame
+  huile_de_colza
+  chapelure
+  fecule_de_pomme_de_terre
+  bicarbonate
+  colorant
+  poulet
+  boeuf
+  porc
+  dinde
+  lardons
+  jambon
+  saucisse
+  chorizo
+  canard
+  saumon
+  thon
+  crevettes
+  cabillaud
+  moules
+  calamars
+  anchois
+  gruyere
+  comte
+  parmesan
+  emmental
+  mozzarella
+  cheddar
+  feta
+  roquefort
+  bleu
+  lait_avoine
+  lait_soja
+  lait_amande
+  creme_soja
+  creme_vegetale
+  cumin
+  zaatar
+  sumac
+  cinq_epices
+  herbes_de_provence
+  tabasco
+  sauce_huitre
+  sauce_bbq
+  sauce_poisson
+  pois_casses
+  haricots_blancs
+  flocons_d_avoine
+  boulgour
+  orge
+  polenta
+  tofu
+  seitan
+  tempeh
+  pain_de_mie
+  oeufs_de_lump
+  vinaigre_de_riz
+  sirop_d_erable
+  sirop_d_agave
+  noisette
+  pignons
+  glacage
 }
 
 enum Unit {
   g
   kg
+  unité
   mL
   cL
   L

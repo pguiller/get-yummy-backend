@@ -1,6 +1,7 @@
 import { Request, Response } from "express";
 import { AuthenticatedRequest } from "../middlewares/authenticateToken";
 import prisma from "../prisma/client";
+import { getIngredientDisplayName } from "../utils/ingredientMapping";
 
 // GET all recipes
 export const getAllRecipes = async (req: Request, res: Response) => {
@@ -15,7 +16,21 @@ export const getAllRecipes = async (req: Request, res: Response) => {
         },
       },
     });
-    res.json(recipes);
+
+    // Transform ingredients to include both name and displayName
+    const recipesWithDisplayNames = recipes.map(recipe => ({
+      ...recipe,
+      ingredients: recipe.ingredients.map(ingredient => ({
+        id: ingredient.id,
+        name: ingredient.name,
+        displayName: getIngredientDisplayName(ingredient.name),
+        unit: ingredient.unit,
+        value: ingredient.value,
+        recipeId: ingredient.recipeId,
+      })),
+    }));
+
+    res.json(recipesWithDisplayNames);
   } catch (error) {
     res.status(500).json({ error: "Erreur lors de la récupération des recettes" });
   }
@@ -37,7 +52,21 @@ export const getRecipeById = async (req: Request, res: Response) => {
       },
     });
     if (!recipe) return res.status(404).json({ message: "Recette non trouvée" });
-    res.json(recipe);
+    
+    // Transform ingredients to include both name and displayName
+    const recipeWithDisplayNames = {
+      ...recipe,
+      ingredients: recipe.ingredients.map(ingredient => ({
+        id: ingredient.id,
+        name: ingredient.name,
+        displayName: getIngredientDisplayName(ingredient.name),
+        unit: ingredient.unit,
+        value: ingredient.value,
+        recipeId: ingredient.recipeId,
+      })),
+    };
+    
+    res.json(recipeWithDisplayNames);
   } catch (error) {
     res.status(500).json({ error: "Erreur lors de la récupération de la recette" });
   }
@@ -62,8 +91,21 @@ export const getRecipesByOwnerId = async (req: Request, res: Response) => {
           },
         },
       });
+
+      // Transform ingredients to include both name and displayName
+      const recipesWithDisplayNames = recipes.map(recipe => ({
+        ...recipe,
+        ingredients: recipe.ingredients.map(ingredient => ({
+          id: ingredient.id,
+          name: ingredient.name,
+          displayName: getIngredientDisplayName(ingredient.name),
+          unit: ingredient.unit,
+          value: ingredient.value,
+          recipeId: ingredient.recipeId,
+        })),
+      }));
   
-      res.json(recipes);
+      res.json(recipesWithDisplayNames);
     } catch (error) {
       console.error('Erreur de récupération des recettes par propriétaire:', error);
       res.status(500).json({ message: "Erreur serveur" });
@@ -78,15 +120,11 @@ export const createRecipe = async (req: AuthenticatedRequest, res: Response) => 
   try {
     const {
       name,
-      date,
       image,
-      preparation_time_value,
-      preparation_time_unit,
-      baking_time_value,
-      baking_time_unit,
+      preparation_time,
+      baking_time,
       thermostat,
-      resting_time_value,
-      resting_time_unit,
+      resting_time,
       number_of_persons,
       link,
       ingredients,
@@ -94,18 +132,18 @@ export const createRecipe = async (req: AuthenticatedRequest, res: Response) => 
       tags,
     } = req.body;
 
+    // Generate current date in YYYY-MM-DD format
+    const currentDate = new Date().toISOString().split('T')[0];
+
     const newRecipe = await prisma.recipe.create({
       data: {
         name,
-        date,
+        date: currentDate, // Use current date automatically
         image,
-        preparation_time_value,
-        preparation_time_unit,
-        baking_time_value,
-        baking_time_unit,
+        preparation_time,
+        baking_time,
         thermostat,
-        resting_time_value,
-        resting_time_unit,
+        resting_time,
         number_of_persons,
         link,
         owner: { connect: { id: req.user.userId } }, // lier au user connecté
@@ -132,6 +170,7 @@ export const createRecipe = async (req: AuthenticatedRequest, res: Response) => 
 
     res.status(201).json(newRecipe);
   } catch (error) {
+    console.error('Erreur lors de la création de la recette:', error);
     res.status(500).json({ error: "Erreur lors de la création de la recette" });
   }
 };
@@ -163,6 +202,20 @@ export const updateRecipe = async (req: AuthenticatedRequest, res: Response) => 
   }
 };
 
+// GET all available ingredient options
+export const getIngredientOptions = async (req: Request, res: Response) => {
+  try {
+    const { ingredientDisplayNames } = await import("../utils/ingredientMapping");
+    const ingredients = Object.entries(ingredientDisplayNames).map(([name, displayName]) => ({
+      name,
+      displayName,
+    }));
+    res.json(ingredients);
+  } catch (error) {
+    res.status(500).json({ error: "Erreur lors de la récupération des options d'ingrédients" });
+  }
+};
+
 // DELETE recipe (seulement si connecté et owner)
 export const deleteRecipe = async (req: AuthenticatedRequest, res: Response) => {
   const id = Number(req.params.id);
@@ -184,5 +237,42 @@ export const deleteRecipe = async (req: AuthenticatedRequest, res: Response) => 
     res.status(204).send();
   } catch (error) {
     res.status(500).json({ error: "Erreur lors de la suppression de la recette" });
+  }
+};
+
+// GET recipe by name
+export const getRecipeByName = async (req: Request, res: Response) => {
+  const name = req.params.name;
+  try {
+    // If you get a type error here, run 'npx prisma generate' to update types after schema change.
+    const recipe = await prisma.recipe.findUnique({
+      where: { name },
+      include: {
+        ingredients: true,
+        steps: true,
+        tags: true,
+        owner: {
+          select: { id: true, name: true, email: true },
+        },
+      },
+    });
+    if (!recipe) return res.status(404).json({ message: "Recette non trouvée" });
+
+    // Transform ingredients to include both name and displayName
+    const recipeWithDisplayNames = {
+      ...recipe,
+      ingredients: recipe.ingredients.map((ingredient: any) => ({
+        id: ingredient.id,
+        name: ingredient.name,
+        displayName: getIngredientDisplayName(ingredient.name),
+        unit: ingredient.unit,
+        value: ingredient.value,
+        recipeId: ingredient.recipeId,
+      })),
+    };
+
+    res.json(recipeWithDisplayNames);
+  } catch (error) {
+    res.status(500).json({ error: "Erreur lors de la récupération de la recette par nom" });
   }
 };
