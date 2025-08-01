@@ -15,6 +15,7 @@ model user {
   status  user_status
   isAdmin Boolean   @default(false)
   recipes Recipe[]
+  PasswordResetToken PasswordResetToken[]
 }
 
 enum user_status {
@@ -263,4 +264,13 @@ model Image {
   filename  String
   path      String
   uploadedAt DateTime @default(now())
+}
+
+model PasswordResetToken {
+  id        Int      @id @default(autoincrement())
+  token     String   @unique
+  user      user     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId    Int
+  expiresAt DateTime
+  createdAt DateTime @default(now())
 }
