@@ -8,6 +8,7 @@ import {
   getRecipesByOwnerId,
   getIngredientOptions,
   getRecipeByName,
+  getMyRecipes,
 } from '../controllers/recipe.controller';
 import { authenticateToken } from '../middlewares/authenticateToken';
 
@@ -17,6 +18,7 @@ router.get('/', getAllRecipes);
 router.get('/ingredients', getIngredientOptions);
 router.get('/owner/:ownerId', authenticateToken, getRecipesByOwnerId);
 router.get('/name/:name', getRecipeByName);
+router.get('/my', authenticateToken, getMyRecipes);
 router.get('/:id', getRecipeById);
 router.post('/', authenticateToken, createRecipe);
 router.put('/:id', authenticateToken, updateRecipe);

@@ -187,8 +187,8 @@ export const updateRecipe = async (req: AuthenticatedRequest, res: Response) => 
       return res.status(404).json({ message: "Recette non trouvée" });
     }
 
-    if (existingRecipe.ownerId !== req.user.userId) {
-      return res.status(403).json({ message: "Vous ne pouvez modifier que vos propres recettes" });
+    if (existingRecipe.ownerId !== req.user.userId && !req.user.isAdmin) {
+      return res.status(403).json({ message: "Vous ne pouvez supprimer que vos propres recettes" });
     }
 
     const updatedRecipe = await prisma.recipe.update({
@@ -216,7 +216,7 @@ export const getIngredientOptions = async (req: Request, res: Response) => {
   }
 };
 
-// DELETE recipe (seulement si connecté et owner)
+// DELETE recipe (seulement si connecté et owner ou admin)
 export const deleteRecipe = async (req: AuthenticatedRequest, res: Response) => {
   const id = Number(req.params.id);
   if (!req.user) return res.status(401).json({ message: "Non autorisé" });
@@ -228,7 +228,7 @@ export const deleteRecipe = async (req: AuthenticatedRequest, res: Response) => 
       return res.status(404).json({ message: "Recette non trouvée" });
     }
 
-    if (existingRecipe.ownerId !== req.user.userId) {
+    if (existingRecipe.ownerId !== req.user.userId && !req.user.isAdmin) {
       return res.status(403).json({ message: "Vous ne pouvez supprimer que vos propres recettes" });
     }
 
@@ -236,6 +236,7 @@ export const deleteRecipe = async (req: AuthenticatedRequest, res: Response) => 
 
     res.status(204).send();
   } catch (error) {
+    console.error("Erreur deleteRecipe :", error);
     res.status(500).json({ error: "Erreur lors de la suppression de la recette" });
   }
 };
@@ -274,5 +275,42 @@ export const getRecipeByName = async (req: Request, res: Response) => {
     res.json(recipeWithDisplayNames);
   } catch (error) {
     res.status(500).json({ error: "Erreur lors de la récupération de la recette par nom" });
+  }
+};
+
+// GET all recipes for the authenticated user
+export const getMyRecipes = async (req: AuthenticatedRequest, res: Response) => {
+  const userId = req.user?.userId;
+  if (!userId) {
+    return res.status(401).json({ message: "Utilisateur non authentifié." });
+  }
+  try {
+    const recipes = await prisma.recipe.findMany({
+      where: { ownerId: userId },
+      include: {
+        ingredients: true,
+        steps: true,
+        tags: true,
+        owner: {
+          select: { id: true, name: true, email: true },
+        },
+      },
+    });
+    
+    // Transform ingredients to include both name and displayName
+    const recipesWithDisplayNames = recipes.map(recipe => ({
+      ...recipe,
+      ingredients: recipe.ingredients.map(ingredient => ({
+        id: ingredient.id,
+        name: ingredient.name,
+        displayName: getIngredientDisplayName(ingredient.name),
+        unit: ingredient.unit,
+        value: ingredient.value,
+        recipeId: ingredient.recipeId,
+      })),
+    }));
+    res.json(recipesWithDisplayNames);
+  } catch (error) {
+    res.status(500).json({ error: "Erreur lors de la récupération des recettes de l'utilisateur authentifié" });
   }
 };
