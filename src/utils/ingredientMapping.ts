@@ -1,5 +1,5 @@
 export const ingredientDisplayNames: Record<string, string> = {
-  oeufs: "Œuf(s)",
+  oeufs: "Oeuf(s)",
   sucre: "Sucre",
   farine: "Farine",
   beurre: "Beurre",

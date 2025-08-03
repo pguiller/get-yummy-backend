@@ -20,10 +20,20 @@ interface EmailOptions {
 }
 
 export const sendEmail = async ({ to, subject, html }: EmailOptions) => {
-  await transporter.sendMail({
-    from: `"${process.env.FROM_NAME}" <${process.env.FROM_EMAIL}>`,
-    to,
-    subject,
-    html,
-  });
+  try {
+    // Validate required environment variables
+    if (!process.env.SMTP_HOST || !process.env.SMTP_PORT || !process.env.SMTP_USER || !process.env.SMTP_PASS || !process.env.FROM_NAME || !process.env.FROM_EMAIL) {
+      throw new Error('Missing required email configuration environment variables');
+    }
+
+    await transporter.sendMail({
+      from: `"${process.env.FROM_NAME}" <${process.env.FROM_EMAIL}>`,
+      to,
+      subject,
+      html,
+    });
+  } catch (error) {
+    console.error('Error sending email:', error);
+    throw error;
+  }
 };

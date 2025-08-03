@@ -257,6 +257,8 @@ enum TagEnum {
   Végétarien
   Plat
   Basique
+  Apéro
+  Entrée
 }
 
 model Image {

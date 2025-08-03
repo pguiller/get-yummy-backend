@@ -25,4 +25,10 @@ app.use('/auth', authRoutes);
 // Serve the uploads directory as static
 app.use('/uploads', express.static(path.join(__dirname, '../uploads')));
 
+// Global error handling middleware
+app.use((error: any, req: express.Request, res: express.Response, next: express.NextFunction) => {
+  console.error('Unhandled error:', error);
+  res.status(500).json({ message: 'Erreur interne du serveur.' });
+});
+
 export default app;

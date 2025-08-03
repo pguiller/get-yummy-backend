@@ -12,7 +12,7 @@ export const getAllRecipes = async (req: Request, res: Response) => {
         steps: true,
         tags: true,
         owner: {
-          select: { id: true, name: true, email: true },
+          select: { id: true, name: true },
         },
       },
     });
@@ -47,7 +47,7 @@ export const getRecipeById = async (req: Request, res: Response) => {
         steps: true,
         tags: true,
         owner: {
-          select: { id: true, name: true, email: true },
+          select: { id: true, name: true },
         },
       },
     });
@@ -87,7 +87,7 @@ export const getRecipesByOwnerId = async (req: Request, res: Response) => {
           steps: true,
           tags: true,
           owner: {
-            select: { id: true, name: true, email: true },
+            select: { id: true, name: true },
           },
         },
       });
@@ -253,7 +253,7 @@ export const getRecipeByName = async (req: Request, res: Response) => {
         steps: true,
         tags: true,
         owner: {
-          select: { id: true, name: true, email: true },
+          select: { id: true, name: true },
         },
       },
     });
@@ -292,7 +292,7 @@ export const getMyRecipes = async (req: AuthenticatedRequest, res: Response) => 
         steps: true,
         tags: true,
         owner: {
-          select: { id: true, name: true, email: true },
+          select: { id: true, name: true },
         },
       },
     });
