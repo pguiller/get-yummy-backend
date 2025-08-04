@@ -8,6 +8,7 @@ import userRoutes from './routes/user.routes';
 import recipeRoutes from './routes/recipe.routes';
 import uploadImageRoutes from './routes/uploadImage.routes';
 import authRoutes from './routes/auth.routes';
+import favoriteRoutes from './routes/favorite.routes';
 import path from 'path';
 
 const app = express();
@@ -21,6 +22,7 @@ app.use('/users', userRoutes);
 app.use('/recipes', recipeRoutes);
 app.use('/upload', uploadImageRoutes);
 app.use('/auth', authRoutes);
+app.use('/favorites', favoriteRoutes);
 
 // Serve the uploads directory as static
 app.use('/uploads', express.static(path.join(__dirname, '../uploads')));

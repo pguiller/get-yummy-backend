@@ -15,6 +15,7 @@ model user {
   status  user_status
   isAdmin Boolean   @default(false)
   recipes Recipe[]
+  favorites Favorite[]
   PasswordResetToken PasswordResetToken[]
 }
 
@@ -39,6 +40,7 @@ model Recipe {
   ingredients       Ingredient[]
   steps             Step[]
   tags              Tag[]
+  favorites         Favorite[]
 }
 
 model Ingredient {
@@ -266,6 +268,17 @@ model Image {
   filename  String
   path      String
   uploadedAt DateTime @default(now())
+}
+
+model Favorite {
+  id       Int      @id @default(autoincrement())
+  userId   Int
+  recipeId Int
+  user     user     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  recipe   Recipe   @relation(fields: [recipeId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+  
+  @@unique([userId, recipeId])
 }
 
 model PasswordResetToken {
