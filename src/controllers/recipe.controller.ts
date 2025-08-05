@@ -132,6 +132,17 @@ export const createRecipe = async (req: AuthenticatedRequest, res: Response) => 
       tags,
     } = req.body;
 
+    // Vérifier si une recette avec ce nom existe déjà
+    const existingRecipe = await prisma.recipe.findUnique({
+      where: { name }
+    });
+
+    if (existingRecipe) {
+      return res.status(409).json({ 
+        error: "Une recette avec ce nom existe déjà",
+      });
+    }
+
     // Generate current date in YYYY-MM-DD format
     const currentDate = new Date().toISOString().split('T')[0];
 
@@ -312,5 +323,70 @@ export const getMyRecipes = async (req: AuthenticatedRequest, res: Response) => 
     res.json(recipesWithDisplayNames);
   } catch (error) {
     res.status(500).json({ error: "Erreur lors de la récupération des recettes de l'utilisateur authentifié" });
+  }
+};
+
+// TOGGLE Best tag on recipe (admin only)
+export const toggleBestTag = async (req: AuthenticatedRequest, res: Response) => {
+  if (!req.user) return res.status(401).json({ message: "Non autorisé" });
+  if (!req.user.isAdmin) return res.status(403).json({ message: "Accès réservé aux administrateurs" });
+
+  const recipeId = Number(req.params.id);
+  if (isNaN(recipeId)) {
+    return res.status(400).json({ message: "ID de recette invalide" });
+  }
+
+  try {
+    // Vérifier si la recette existe
+    const recipe = await prisma.recipe.findUnique({
+      where: { id: recipeId },
+      include: { tags: true }
+    });
+
+    if (!recipe) {
+      return res.status(404).json({ message: "Recette non trouvée" });
+    }
+
+    // Trouver le tag Best existant
+    const existingBestTag = recipe.tags.find(tag => tag.value === 'Best');
+
+    if (req.method === 'POST') {
+      // Ajouter le tag Best
+      if (existingBestTag) {
+        return res.status(400).json({ message: "Cette recette a déjà le tag Best" });
+      }
+
+      const newTag = await prisma.tag.create({
+        data: {
+          value: 'Best',
+          recipeId: recipeId
+        }
+      });
+
+      res.status(201).json({
+        message: "Tag Best ajouté avec succès",
+        tag: newTag,
+        action: "added"
+      });
+    } else if (req.method === 'DELETE') {
+      // Supprimer le tag Best
+      if (!existingBestTag) {
+        return res.status(404).json({ message: "Cette recette n'a pas le tag Best" });
+      }
+
+      await prisma.tag.delete({
+        where: { id: existingBestTag.id }
+      });
+
+      res.json({
+        message: "Tag Best supprimé avec succès",
+        action: "removed"
+      });
+    } else {
+      res.status(405).json({ message: "Méthode non autorisée" });
+    }
+  } catch (error) {
+    console.error('Erreur lors de la gestion du tag Best:', error);
+    res.status(500).json({ error: "Erreur lors de la gestion du tag Best" });
   }
 };

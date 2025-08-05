@@ -23,6 +23,9 @@ app.use('/recipes', recipeRoutes);
 app.use('/upload', uploadImageRoutes);
 app.use('/auth', authRoutes);
 app.use('/favorites', favoriteRoutes);
+app.get("/health", (req, res) => {
+  res.status(200).json({ status: "ok" });
+});
 
 // Serve the uploads directory as static
 app.use('/uploads', express.static(path.join(__dirname, '../uploads')));
