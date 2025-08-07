@@ -199,7 +199,7 @@ export const updateRecipe = async (req: AuthenticatedRequest, res: Response) => 
     }
 
     if (existingRecipe.ownerId !== req.user.userId && !req.user.isAdmin) {
-      return res.status(403).json({ message: "Vous ne pouvez supprimer que vos propres recettes" });
+      return res.status(403).json({ message: "Vous ne pouvez modifier que vos propres recettes" });
     }
 
     const updatedRecipe = await prisma.recipe.update({

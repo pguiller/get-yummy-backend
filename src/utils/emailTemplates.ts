@@ -136,7 +136,7 @@ export const generatePasswordResetEmail = (userName: string, userEmail: string, 
         <div class="footer">
           <p>Cet email a été envoyé à ${userEmail}</p>
           <p>Si vous avez des questions, n'hésitez pas à nous contacter.</p>
-          <p>© 2024 Get Yummy. Tous droits réservés.</p>
+          <p>© 2025 Get Yummy. Tous droits réservés.</p>
         </div>
       </div>
     </body>
