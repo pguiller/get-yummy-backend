@@ -1,5 +1,5 @@
 import { Request, Response, NextFunction } from 'express';
-import { verifyToken } from '../utils/jwt';
+import { verifyAccessToken } from '../utils/jwt';
 
 export interface AuthenticatedRequest extends Request {
   user?: { userId: number; email: string; isAdmin: boolean };
@@ -14,10 +14,10 @@ export const authenticateToken = (
   if (!token) return res.status(401).json({ message: 'Token requis' });
 
   try {
-    const decoded = verifyToken(token);
+    const decoded = verifyAccessToken(token);
     req.user = decoded;
     next();
   } catch {
-    return res.status(401).json({ message: 'Token invalide' });
+    return res.status(401).json({ message: 'Token invalide ou expiré' });
   }
 };

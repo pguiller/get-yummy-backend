@@ -5,6 +5,7 @@ import prisma from '../prisma/client';
 import { sendEmail } from '../utils/sendEmail';
 import { generatePasswordResetEmail } from '../utils/emailTemplates';
 import crypto from 'crypto';
+import { generateAccessToken, generateRefreshToken, verifyRefreshToken } from '../utils/jwt';
 
 const JWT_SECRET = process.env.JWT_SECRET || 'supersecretkey';
 
@@ -35,15 +36,158 @@ export const login = async (req: Request, res: Response) => {
   if (!user || !(await bcrypt.compare(password, user.password))) {
     return res.status(401).json({ message: 'Mail ou mot de passe invalide.' });
   }
-  const token = jwt.sign({ userId: user.id, email: user.email, isAdmin: user.isAdmin }, JWT_SECRET, { expiresIn: '1d' });
-  res.cookie('token', token, { httpOnly: true, sameSite: 'lax' });
+
+  // Generate refresh token ID
+  const refreshTokenId = crypto.randomBytes(32).toString('hex');
+  
+  // Generate tokens
+  const accessToken = generateAccessToken({ 
+    userId: user.id, 
+    email: user.email, 
+    isAdmin: user.isAdmin 
+  });
+  
+  const refreshToken = generateRefreshToken({ 
+    userId: user.id, 
+    tokenId: refreshTokenId 
+  });
+
+  // Store refresh token in database
+  const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000); // 7 days
+  await prisma.refreshToken.create({
+    data: {
+      token: refreshTokenId,
+      userId: user.id,
+      expiresAt,
+    },
+  });
+
+  // Set cookies
+  res.cookie('token', accessToken, { 
+    httpOnly: true, 
+    sameSite: 'lax',
+    maxAge: 15 * 60 * 1000 // 15 minutes
+  });
+  
+  res.cookie('refreshToken', refreshToken, { 
+    httpOnly: true, 
+    sameSite: 'lax',
+    maxAge: 7 * 24 * 60 * 60 * 1000 // 7 days
+  });
+
   const { password: _, isAdmin: __, ...userWithoutSensitiveData } = user;
-  res.json({ message: 'Connecté.e avec succès.', data: userWithoutSensitiveData, token });
+  res.json({ 
+    message: 'Connecté.e avec succès.', 
+    data: userWithoutSensitiveData, 
+    accessToken,
+    refreshToken 
+  });
 };
 
-export const logout = (_req: Request, res: Response) => {
+export const logout = async (req: Request, res: Response) => {
+  const refreshToken = req.cookies.refreshToken;
+  
+  if (refreshToken) {
+    try {
+      const decoded = verifyRefreshToken(refreshToken);
+      // Revoke the refresh token in the database
+      await prisma.refreshToken.updateMany({
+        where: { 
+          token: decoded.tokenId,
+          userId: decoded.userId,
+          isRevoked: false
+        },
+        data: { isRevoked: true }
+      });
+    } catch (error) {
+      // If refresh token is invalid, just continue with logout
+      console.log('Invalid refresh token during logout:', error);
+    }
+  }
+  
   res.clearCookie('token');
+  res.clearCookie('refreshToken');
   res.json({ message: 'Logged out' });
+};
+
+export const refresh = async (req: Request, res: Response) => {
+  const refreshToken = req.cookies.refreshToken;
+  
+  if (!refreshToken) {
+    return res.status(401).json({ message: 'Refresh token requis' });
+  }
+
+  try {
+    // Verify the refresh token
+    const decoded = verifyRefreshToken(refreshToken);
+    
+    // Check if the refresh token exists and is not revoked
+    const storedToken = await prisma.refreshToken.findFirst({
+      where: {
+        token: decoded.tokenId,
+        userId: decoded.userId,
+        isRevoked: false,
+        expiresAt: { gt: new Date() }
+      },
+      include: { user: true }
+    });
+
+    if (!storedToken) {
+      return res.status(401).json({ message: 'Refresh token invalide ou expiré' });
+    }
+
+    // Generate new access token
+    const newAccessToken = generateAccessToken({
+      userId: storedToken.user.id,
+      email: storedToken.user.email,
+      isAdmin: storedToken.user.isAdmin
+    });
+
+    // Set new access token cookie
+    res.cookie('token', newAccessToken, { 
+      httpOnly: true, 
+      sameSite: 'lax',
+      maxAge: 15 * 60 * 1000 // 15 minutes
+    });
+
+    res.json({ 
+      message: 'Token rafraîchi avec succès',
+      accessToken: newAccessToken
+    });
+  } catch (error) {
+    console.error('Error refreshing token:', error);
+    return res.status(401).json({ message: 'Refresh token invalide' });
+  }
+};
+
+export const cleanupTokens = async (req: Request, res: Response) => {
+  try {
+    const { cleanupExpiredTokens } = await import('../utils/tokenCleanup');
+    const cleanedCount = await cleanupExpiredTokens();
+    
+    res.json({ 
+      message: `Nettoyage terminé. ${cleanedCount} tokens supprimés.`,
+      cleanedCount 
+    });
+  } catch (error) {
+    console.error('Error cleaning up tokens:', error);
+    res.status(500).json({ message: 'Erreur lors du nettoyage des tokens' });
+  }
+};
+
+export const getTokenStats = async (req: Request, res: Response) => {
+  try {
+    const { getTokenStats } = await import('../utils/tokenCleanup');
+    const stats = await getTokenStats();
+    
+    res.json({ 
+      message: 'Statistiques des tokens récupérées',
+      stats 
+    });
+  } catch (error) {
+    console.error('Error getting token stats:', error);
+    res.status(500).json({ message: 'Erreur lors de la récupération des statistiques' });
+  }
 };
 
 export const sendResetPasswordEmail = async (userEmail: string, token: string) => {

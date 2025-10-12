@@ -192,7 +192,14 @@ export const updateRecipe = async (req: AuthenticatedRequest, res: Response) => 
   if (!req.user) return res.status(401).json({ message: "Non autorisé" });
 
   try {
-    const existingRecipe = await prisma.recipe.findUnique({ where: { id } });
+    const existingRecipe = await prisma.recipe.findUnique({
+      where: { id },
+      include: {
+        ingredients: true,
+        steps: true,
+        tags: true,
+      },
+    });
 
     if (!existingRecipe) {
       return res.status(404).json({ message: "Recette non trouvée" });
@@ -202,13 +209,154 @@ export const updateRecipe = async (req: AuthenticatedRequest, res: Response) => 
       return res.status(403).json({ message: "Vous ne pouvez modifier que vos propres recettes" });
     }
 
-    const updatedRecipe = await prisma.recipe.update({
-      where: { id },
-      data: req.body,
+    // Extraction des champs du body
+    const {
+      name,
+      image,
+      preparation_time,
+      baking_time,
+      thermostat,
+      resting_time,
+      number_of_persons,
+      link,
+      ingredients = [],
+      steps = [],
+      tags = [],
+    } = req.body;
+
+    // Vérifier si le nouveau nom existe déjà sur une autre recette
+    if (name && name !== existingRecipe.name) {
+      const existingRecipeWithSameName = await prisma.recipe.findUnique({
+        where: { name }
+      });
+      
+      if (existingRecipeWithSameName && existingRecipeWithSameName.id !== id) {
+        return res.status(409).json({ 
+          error: "Une recette avec ce nom existe déjà",
+        });
+      }
+    }
+
+    // --- INGREDIENTS ---
+    type IngredientInput = { id?: number; name: string; unit?: string; value: number };
+    const currentIngredientIds = existingRecipe.ingredients.map((i: any) => i.id);
+    const incomingIngredientIds = (ingredients as IngredientInput[]).filter((i) => i.id).map((i) => i.id!);
+    // À supprimer
+    const ingredientsToDelete = currentIngredientIds.filter((id: number) => !incomingIngredientIds.includes(id));
+    // À mettre à jour
+    const ingredientsToUpdate = (ingredients as IngredientInput[]).filter((i) => i.id);
+    // À créer
+    const ingredientsToCreate = (ingredients as IngredientInput[]).filter((i) => !i.id);
+
+    // --- STEPS ---
+    type StepInput = { id?: number; description: string; image?: string };
+    const currentStepIds = existingRecipe.steps.map((s: any) => s.id);
+    const incomingStepIds = (steps as StepInput[]).filter((s) => s.id).map((s) => s.id!);
+    const stepsToDelete = currentStepIds.filter((id: number) => !incomingStepIds.includes(id));
+    const stepsToUpdate = (steps as StepInput[]).filter((s) => s.id);
+    const stepsToCreate = (steps as StepInput[]).filter((s) => !s.id);
+
+    // --- TAGS ---
+    type TagInput = { id?: number; value: string };
+    const currentTagIds = existingRecipe.tags.map((t: any) => t.id);
+    const incomingTagIds = (tags as TagInput[]).filter((t) => t.id).map((t) => t.id!);
+    const tagsToDelete = currentTagIds.filter((id: number) => !incomingTagIds.includes(id));
+    const tagsToUpdate = (tags as TagInput[]).filter((t) => t.id);
+    const tagsToCreate = (tags as TagInput[]).filter((t) => !t.id);
+
+    const data: any = {
+      name,
+      image,
+      preparation_time,
+      baking_time,
+      thermostat,
+      resting_time,
+      number_of_persons,
+      link,
+      // --- INGREDIENTS ---
+      ingredients: {
+        deleteMany: ingredientsToDelete.map(id => ({ id })),
+        update: ingredientsToUpdate.map(i => ({
+          where: { id: i.id },
+          data: {
+            name: i.name,
+            unit: i.unit,
+            value: i.value,
+          },
+        })),
+        create: ingredientsToCreate.map(i => ({
+          name: i.name,
+          unit: i.unit,
+          value: i.value,
+        })),
+      },
+      // --- STEPS ---
+      steps: {
+        deleteMany: stepsToDelete.map(id => ({ id })),
+        update: stepsToUpdate.map(s => ({
+          where: { id: s.id },
+          data: {
+            description: s.description,
+            image: s.image,
+          },
+        })),
+        create: stepsToCreate.map(s => ({
+          description: s.description,
+          image: s.image,
+        })),
+      },
+      // --- TAGS ---
+      tags: {
+        deleteMany: tagsToDelete.map(id => ({ id })),
+        update: tagsToUpdate.map(t => ({
+          where: { id: t.id },
+          data: {
+            value: t.value,
+          },
+        })),
+        create: tagsToCreate.map(t => ({
+          value: t.value,
+        })),
+      },
+    };
+
+    // Filtrer les champs undefined/null pour éviter les erreurs Prisma
+    Object.keys(data).forEach(key => {
+      if (data[key] === undefined || data[key] === null) {
+        delete data[key];
+      }
     });
 
-    res.json(updatedRecipe);
+    console.log('Data to update:', JSON.stringify(data, null, 2));
+
+    const updatedRecipe = await prisma.recipe.update({
+      where: { id },
+      data,
+      include: {
+        ingredients: true,
+        steps: true,
+        tags: true,
+        owner: { select: { id: true, name: true } },
+      },
+    });
+
+    // Transform ingredients to include both name and displayName for response
+    const recipeWithDisplayNames = {
+      ...updatedRecipe,
+      ingredients: updatedRecipe.ingredients.map(ingredient => ({
+        id: ingredient.id,
+        name: ingredient.name,
+        displayName: getIngredientDisplayName(ingredient.name),
+        unit: ingredient.unit,
+        value: ingredient.value,
+        recipeId: ingredient.recipeId,
+      })),
+    };
+
+    res.json(recipeWithDisplayNames);
   } catch (error) {
+    console.error("Erreur lors de la mise à jour de la recette:", error);
+    console.error("Stack trace:", error instanceof Error ? error.stack : 'No stack trace');
     res.status(500).json({ error: "Erreur lors de la mise à jour de la recette" });
   }
 };

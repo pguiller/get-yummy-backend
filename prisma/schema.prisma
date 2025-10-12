@@ -17,6 +17,7 @@ model user {
   recipes Recipe[]
   favorites Favorite[]
   PasswordResetToken PasswordResetToken[]
+  RefreshToken RefreshToken[]
 }
 
 enum user_status {
@@ -288,4 +289,14 @@ model PasswordResetToken {
   userId    Int
   expiresAt DateTime
   createdAt DateTime @default(now())
+}
+
+model RefreshToken {
+  id        Int      @id @default(autoincrement())
+  token     String   @unique
+  user      user     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId    Int
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+  isRevoked Boolean  @default(false)
 }
