@@ -6,7 +6,8 @@
   "scripts": {
     "start": "node ./dist/index.js",
     "dev": "nodemon ./src/index.ts",
-    "build": "tsc -p ."
+    "build": "tsc -p .",
+    "set-admin": "node scripts/setAdmin.js"
   },
   "devDependencies": {
     "@types/bcrypt": "^6.0.0",
